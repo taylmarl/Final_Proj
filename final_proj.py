@@ -10,10 +10,16 @@ import secrets as pysecrets # file with api keys
 CACHE_FILENAME = "final_cache.json"
 CACHE_DICT = {}
 
+# The Zipcode API does not have keys for params access, but
+# instead takes a very specific string of params.
 zip_key = pysecrets.zip_api_key
-#zip_base = 
+zip_base = f'https://www.zipcodeapi.com/rest/{zip_key}/info.json/'
+
+# The Yelp API takes a typical 
 yelp_key = pysecrets.yelp_api_key
-#yelp_base
+yelp_base = 'https://api.yelp.com/v3/businesses/search'
+
+# General Functions for Caching:
 
 def open_cache():
     ''' Opens the cache file if it exists and loads the JSON into
@@ -37,7 +43,6 @@ def open_cache():
         cache_dict = {}
     return cache_dict
 
-
 def save_cache(cache_dict):
     ''' Saves the current state of the cache to disk
     
@@ -54,7 +59,6 @@ def save_cache(cache_dict):
     fw = open(CACHE_FILENAME,"w")
     fw.write(dumped_json_cache)
     fw.close() 
-
 
 def construct_unique_key(baseurl, params):
     ''' constructs a key that is guaranteed to uniquely and 
@@ -89,18 +93,17 @@ def construct_unique_key(baseurl, params):
 
     return unique_key
 
-def make_request(baseurl, params, api_key):
-    '''Make a request to the Web API using the baseurl and params
+# Zip Code API Functions
+
+def zip_make_request(search_url):
+    '''Make a request to the Zipcode API using the baseurl and params
 
     Parameters
     ----------
-    baseurl: string
-        The URL for the API endpoint
-    params: dictionary
-        A dictionary of param:value pairs
-    api_label: string
-        A string of either "yelp" or "zip", to
-        differentiate which keys are needed
+    search_url: string
+        The URL for a specific Zipcode API search.
+        The zipcode API does not have keys for params, 
+        so each term must be appended in order. (zipcode/degrees).
 
     Returns
     -------
@@ -108,24 +111,13 @@ def make_request(baseurl, params, api_key):
         the data returned from making the request in the form of 
         a dictionary
     '''
-    #TODO Implement function
 
-    # Replace params dict with lowercase hashtags (or any other string params)
-    for key, values in params.items():
-        if type(values) == str:
-            params[key] = values.lower()
-
-    # Add key to params
-    if api_key:
-        params['key'] = api_key
-
-    # Make request using params & oauth
-    response = requests.get(url=baseurl,
-                            params=params)
+    # Make request and return dict results
+    response = requests.get(search_url)
     results = response.json()
     return results
 
-def make_request_with_cache(baseurl, hashtag, count, api_label):
+def zip_make_request_with_cache(search_url, zipcode):
     '''Check the cache for a saved result for this baseurl+params:values
     combo. If the result is found, return it. Otherwise send a new
     request, save it, then return it.
@@ -156,42 +148,34 @@ def make_request_with_cache(baseurl, hashtag, count, api_label):
         the results of the query as a dictionary loaded from cache
         JSON
     '''
-    #TODO Implement function
     CACHE_DICT = open_cache()
 
-    # Determine which api key we need
-    if api_label.lower() == 'yelp':
-        api_key = yelp_key
-        #baseurl = yelp_base
-    elif api_label.lower() == 'zip':
-        api_key = zip_key
-        #baseurl = zip_base
-    else:
-        api_key = None
-        baseurl = None
-
-    # Saving parameters of hashtag, count, and key into
-    # dictionary for get request, if necessary.
-    params = {'q': hashtag.lower(), 'count': count}
-    if api_key:
-        params['key'] = api_key
-
     # Using our unique key function to save and search keys in our cache
-    if baseurl:
-        query_url = construct_unique_key(baseurl, params)
+    query_url = f'{search_url}{zipcode}/degrees'
 
-        # See if this query has already been done (and is saved in cache)
-        if query_url in CACHE_DICT.keys():
-            print('fetching cached data')
-            return CACHE_DICT[query_url]
+    # See if this query has already been done (and is saved in cache)
+    if query_url in CACHE_DICT.keys():
+        print('fetching cached data')
+        return CACHE_DICT[query_url]
 
-        # If query is not in cache, make new get request,
-        # save in cache & return data from cache
-        else:
-            print('making new request')
-            CACHE_DICT[query_url] = make_request(baseurl, params, api_key)
-            save_cache(CACHE_DICT)
-            return CACHE_DICT[query_url]
-
+    # If query is not in cache, make new get request,
+    # save in cache & return data from cache
     else:
-        return "no matching url or key"
+        print('making new request')
+        CACHE_DICT[query_url] = zip_make_request(query_url)
+        save_cache(CACHE_DICT)
+        return CACHE_DICT[query_url]
+
+
+if __name__ == "__main__":
+    # Zip API example for access
+
+    # resp = zip_make_request_with_cache(zip_base, '48109')
+    # print(resp)
+
+    # Yelp API example for access
+
+    # resp = requests.get(yelp_base,params={'latitude':37.786882,
+    #                                         'longitude':-122.399972}, headers={'Authorization': 'Bearer {}'.format(yelp_key)})
+    # print(resp.json())
+    pass
