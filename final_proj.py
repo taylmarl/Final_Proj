@@ -178,10 +178,10 @@ def make_request_with_cache(baseurl, hashtag, count, api_label):
         # Determine which api key we need
         if api_label.lower() == 'yelp':
             api_key = yelp_key
-            baseurl = yelp_base
+            #baseurl = yelp_base
         elif api_label.lower() == 'zip':
             api_key = zip_key
-            baseurl = zip_base
+            #baseurl = zip_base
         else:
             api_key = None
 
