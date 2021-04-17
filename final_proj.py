@@ -158,34 +158,40 @@ def make_request_with_cache(baseurl, hashtag, count, api_label):
     '''
     #TODO Implement function
     CACHE_DICT = open_cache()
-    # Saving parameters of hashtag and count into
+
+    # Determine which api key we need
+    if api_label.lower() == 'yelp':
+        api_key = yelp_key
+        #baseurl = yelp_base
+    elif api_label.lower() == 'zip':
+        api_key = zip_key
+        #baseurl = zip_base
+    else:
+        api_key = None
+        baseurl = None
+
+    # Saving parameters of hashtag, count, and key into
     # dictionary for get request, if necessary.
     params = {'q': hashtag.lower(), 'count': count}
+    if api_key:
+        params['key'] = api_key
 
     # Using our unique key function to save and search keys in our cache
-    query_url = construct_unique_key(baseurl, params)
+    if baseurl:
+        query_url = construct_unique_key(baseurl, params)
 
-    # See if this query has already been done (and is saved in cache)
-    if query_url in CACHE_DICT.keys():
-        print('fetching cached data')
-        return CACHE_DICT[query_url]
+        # See if this query has already been done (and is saved in cache)
+        if query_url in CACHE_DICT.keys():
+            print('fetching cached data')
+            return CACHE_DICT[query_url]
 
-    # If query is not in cache, make new get request,
-    # save in cache & return data from cache
-    else:
-        print('making new request')
-
-        # Determine which api key we need
-        if api_label.lower() == 'yelp':
-            api_key = yelp_key
-            #baseurl = yelp_base
-        elif api_label.lower() == 'zip':
-            api_key = zip_key
-            #baseurl = zip_base
+        # If query is not in cache, make new get request,
+        # save in cache & return data from cache
         else:
-            api_key = None
+            print('making new request')
+            CACHE_DICT[query_url] = make_request(baseurl, params, api_key)
+            save_cache(CACHE_DICT)
+            return CACHE_DICT[query_url]
 
-
-        CACHE_DICT[query_url] = make_request(baseurl, params, api_key)
-        save_cache(CACHE_DICT)
-        return CACHE_DICT[query_url]
+    else:
+        return "no matching url or key"
