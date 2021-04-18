@@ -5,21 +5,68 @@
 
 import json
 import requests
+import sqlite3
 import secrets as pysecrets # file with api keys
 
 CACHE_FILENAME = "final_cache.json"
 CACHE_DICT = {}
 
+# set up connection with database and establish cursor
+conn = sqlite3.connect('Si507Proj.sqlite')
+cur = conn.cursor()
+
 # The Zipcode API does not have keys for params access, but
-# instead takes a very specific string of params.
+# instead takes a very specifically ordered string of params.
 zip_key = pysecrets.zip_api_key
 zip_base = f'https://www.zipcodeapi.com/rest/{zip_key}/info.json/'
 
-# The Yelp API takes a typical 
+# The Yelp API takes a typical key format
 yelp_key = pysecrets.yelp_api_key
 yelp_base = 'https://api.yelp.com/v3/businesses/search'
 
-# General Functions for Caching:
+
+
+# SQL Database Caching (CRUD) Statements:
+
+create_zip = '''
+    CREATE TABLE IF NOT EXISTS "zipcodes" (
+        "Zipcode"   TEXT NOT NULL PRIMARY KEY UNIQUE,
+        "City"      TEXT NOT NULL,
+        "State"     TEXT NOT NULL,
+        "Latitude"  TEXT NOT NULL,
+        "Longitude" TEXT NOT NULL,
+        "Timezone"  TEXT NOT NULL
+    );
+'''
+
+create_yelp = '''
+    CREATE TABLE IF NOT EXISTS "yelp" (
+        "Id"        INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+        "Name"      TEXT NOT NULL,
+        "Business Type"     TEXT NOT NULL,
+        "Price"     TEXT NOT NULL,
+        "Phone"     TEXT NOT NULL,
+        "Zipcode"   TEXT NOT NULL,
+        "Open Status"  TEXT NOT NULL,
+        "Address" TEXT NOT NULL,
+        "City"  TEXT NOT NULL,
+        "State" TEXT NOT NULL,
+
+        FOREIGN KEY(Zipcode) REFERENCES zipcodes(Zipcode)
+    );
+'''
+
+insert_zip = '''
+    INSERT INTO zipcodes
+    VALUES(?, ?, ?, ?, ?, ?)
+'''
+
+insert_yelp = '''
+    INSERT INTO yelp
+    VALUES(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+'''
+
+# General Functions for Dict Caching:
 
 def open_cache():
     ''' Opens the cache file if it exists and loads the JSON into
@@ -92,6 +139,54 @@ def construct_unique_key(baseurl, params):
     unique_key = baseurl + connector +  connector.join(param_strings)
 
     return unique_key
+
+# Zip Code Class
+
+class Zipcode:
+    '''location information associated with a zipcode.
+
+    Instance Attributes
+    -------------------
+    zipcode: string
+        the 5-digit zip-code of a location
+
+    latitude: string
+        the latitudinal coordinates for a given zipcode or city/state location
+
+    longitude: string
+        the longitudinal coordinates for a given zipcode or city/state location
+
+    city: string
+
+    state: string
+        the state that a given zipcode is from
+
+    timezone: string
+        abbreviaton for the timezone of a given zipcode
+    '''
+    def __init__(self, zipcode, latitude, longitude, city, state, timezone):
+        '''
+        Initalize instance of Zipcode according to class spec
+        '''
+        self.zipcode = zipcode
+        self.latitude = latitude
+        self.longitude = longitude
+        self.city = city
+        self.state = state
+        self.timezone = timezone
+
+
+    def info(self):
+        '''
+        Return nicely formatted information about Zipcode object.
+        '''
+        # From https://stackoverflow.com/questions/45965007/multiline-f-string-in-python
+        # python strings will concatenate in return statements when not comma-separated.
+        return (
+            f"The zipcode {self.zipcode} represents {self.city}, {self.state}. \n"
+            f"It has (lat, long) coordinates of: ({self.latitude}, {self.longitude}). \n"
+            f"It falls into the {self.timezone} timezone."
+        )
 
 # Zip Code API Functions
 
@@ -166,8 +261,14 @@ def zip_make_request_with_cache(search_url, zipcode):
         save_cache(CACHE_DICT)
         return CACHE_DICT[query_url]
 
+# Yelp Fusion Class (?)
+
+# Yelp Fusion API Functions
 
 if __name__ == "__main__":
+    conn.execute(create_yelp)
+    conn.execute(create_zip)
+    conn.commit()
     # Zip API example for access
 
     # resp = zip_make_request_with_cache(zip_base, '48109')
@@ -178,4 +279,9 @@ if __name__ == "__main__":
     # resp = requests.get(yelp_base,params={'latitude':37.786882,
     #                                         'longitude':-122.399972}, headers={'Authorization': 'Bearer {}'.format(yelp_key)})
     # print(resp.json())
-    pass
+
+
+    # conn.execute(insert_zip, ['48109', 'Ann Arbor', 'MI', '3838.3', '38383.3', 'EST'])
+    # conn.execute(insert_yelp, ['ben & jerrys', 'ice cream', '$$', '734-xxx-xxxx', '48109', 'open', 'state st', 'ann arbor', 'MI'])
+    # conn.commit()
+
