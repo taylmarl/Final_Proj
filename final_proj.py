@@ -229,13 +229,6 @@ def zip_make_request_with_cache(search_url, zipcode):
     ----------
     baseurl: string
         The URL for the API endpoint
-    hashtag: string
-        The hashtag to search for
-    count: integer
-        The number of results you request from Twitter
-    api_label: string
-        A string of either "yelp" or "zip" to
-        differentiate between keys needed
 
     Returns
     -------
@@ -261,9 +254,139 @@ def zip_make_request_with_cache(search_url, zipcode):
         save_cache(CACHE_DICT)
         return CACHE_DICT[query_url]
 
-# Yelp Fusion Class (?)
+# Yelp Fusion Class
+
+class Yelp:
+    '''information associated with yelp businesses.
+
+    Instance Attributes
+    -------------------
+    name: string
+        the name of the business
+
+    bus_type: string
+        the title or alias denoting the type of business
+
+    phone: string
+        the phone number for a business
+
+    address: string
+        the street address of a given business
+
+    reviews: list
+        abbreviaton for the timezone of a given zipcode
+
+    price: string
+        string showing price of business using $ symbols
+
+    link: string
+        a string with the link to the business website
+    '''
+    def __init__(self, name, bus_type, phone, address, reviews, price, link):
+        '''
+        Initalize instance of Yelp business according to class spec
+        '''
+        self.name = name
+        self.bus_type = bus_type
+        self.phone = phone
+        self.address = address
+        self.price = price
+        self.link = link
+
+    def info(self):
+        '''
+        Return nicely formatted information about Yelp object.
+        '''
+        # From https://stackoverflow.com/questions/45965007/multiline-f-string-in-python
+        # python strings will concatenate in return statements when not comma-separated.
+        return (
+            f"{self.name} ({self.bus_type}) is located in {self.city}, {self.state}. \n"
+            f"It has a price rating of: {self.price}. \n"
+            f"More information can be found at {self.link}"
+        )
 
 # Yelp Fusion API Functions
+
+def yelp_make_request(baseurl, params):
+    '''Make a request to the Web API using the baseurl and params
+    
+    Parameters
+    ----------
+    baseurl: string
+        The URL for the API endpoint
+    params: dictionary
+        A dictionary of param:value pairs
+    
+    Returns
+    -------
+    dict
+        the data returned from making the request in the form of 
+        a dictionary
+    '''
+
+    # Replace params dict with lowercase hashtags (or any other string params)
+    for key, values in params.items():
+        if type(values) == str:
+            params[key] = values.lower()
+
+
+    # Make request using params & oauth
+    response = requests.get(url=baseurl,
+                            params=params,
+                            headers={'Authorization': 'Bearer {}'.format(yelp_key)})
+    results = response.json()
+    return results
+
+def yelp_make_request_with_cache(baseurl, zipcode, term=None):
+    '''Check the cache for a saved result for this baseurl+params:values
+    combo. If the result is found, return it. Otherwise send a new
+    request, save it, then return it.
+
+    Parameters
+    ----------
+    baseurl: string
+        The URL for the API endpoint
+    zipcode: integer
+        The zipcode to search for businesses nearby
+    term: string
+        search term to accompany location search, if supplied.
+    limit: integer
+        The number of results to request from Yelp Fusion API
+
+    Returns
+    -------
+    dict
+        the results of the query as a dictionary loaded from cache
+        JSON
+    '''
+    #TODO Implement function
+    CACHE_DICT = open_cache()
+    # Saving parameters of location and limit into
+    # dictionary for get request, if necessary.
+    params = {'limit': 10}
+
+    if zipcode is not None:
+        params['location'] = zipcode
+
+    if term is not None:
+        params['term'] = term
+
+
+    # Using our unique key function to save and search keys in our cache
+    query_url = construct_unique_key(baseurl, params)
+
+    # See if this query has already been done (and is saved in cache)
+    if query_url in CACHE_DICT.keys():
+        print('fetching cached data')
+        return CACHE_DICT[query_url]
+
+    # If query is not in cache, make new get request,
+    # save in cache & return data from cache
+    else:
+        print('making new request')
+        CACHE_DICT[query_url] = yelp_make_request(baseurl, params)
+        save_cache(CACHE_DICT)
+        return CACHE_DICT[query_url]
 
 if __name__ == "__main__":
     conn.execute(create_yelp)
@@ -277,11 +400,17 @@ if __name__ == "__main__":
     # Yelp API example for access
 
     # resp = requests.get(yelp_base,params={'latitude':37.786882,
-    #                                         'longitude':-122.399972}, headers={'Authorization': 'Bearer {}'.format(yelp_key)})
+    #                                         'longitude':-122.399972, 'term': 'tea', 'limit': 5}, headers={'Authorization': 'Bearer {}'.format(yelp_key)})
     # print(resp.json())
 
 
     # conn.execute(insert_zip, ['48109', 'Ann Arbor', 'MI', '3838.3', '38383.3', 'EST'])
     # conn.execute(insert_yelp, ['ben & jerrys', 'ice cream', '$$', '734-xxx-xxxx', '48109', 'open', 'state st', 'ann arbor', 'MI'])
     # conn.commit()
+
+
+
+
+# Actual Main Calls:::::::::::::::::::>
+
 
