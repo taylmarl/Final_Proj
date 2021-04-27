@@ -7,13 +7,13 @@ import json
 import requests
 import sqlite3
 import secrets as pysecrets # file with api keys
+from flask import Flask, render_template, request
+
+app = Flask(__name__)
 
 CACHE_FILENAME = "final_cache.json"
 CACHE_DICT = {}
 
-# set up connection with database and establish cursor
-conn = sqlite3.connect('Si507Proj.sqlite')
-cur = conn.cursor()
 
 # The Zipcode API does not have keys for params access, but
 # instead takes a very specifically ordered string of params.
@@ -31,39 +31,38 @@ yelp_base = 'https://api.yelp.com/v3/businesses/search'
 create_zip = '''
     CREATE TABLE IF NOT EXISTS "zipcodes" (
         "Zipcode"   TEXT NOT NULL PRIMARY KEY UNIQUE,
-        "City"      TEXT NOT NULL,
-        "State"     TEXT NOT NULL,
         "Latitude"  TEXT NOT NULL,
         "Longitude" TEXT NOT NULL,
+        "City"      TEXT NOT NULL,
+        "State"     TEXT NOT NULL,
         "Timezone"  TEXT NOT NULL
     );
 '''
 
 create_yelp = '''
     CREATE TABLE IF NOT EXISTS "yelp" (
-        "Id"        INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
         "Name"      TEXT NOT NULL,
-        "Business Type"     TEXT NOT NULL,
-        "Price"     TEXT NOT NULL,
-        "Phone"     TEXT NOT NULL,
         "Zipcode"   TEXT NOT NULL,
-        "Open Status"  TEXT NOT NULL,
+        "Business Type"     TEXT NOT NULL,
+        "Phone"     TEXT NOT NULL,
         "Address" TEXT NOT NULL,
-        "City"  TEXT NOT NULL,
-        "State" TEXT NOT NULL,
+        "Reviews"  TEXT NOT NULL,
+        "Rating"   TEXT NOT NULL,
+        "Price"     TEXT NOT NULL,
+        "Link"      TEXT NOT NULL PRIMARY KEY UNIQUE,
 
         FOREIGN KEY(Zipcode) REFERENCES zipcodes(Zipcode)
     );
 '''
 
 insert_zip = '''
-    INSERT INTO zipcodes
+    INSERT OR IGNORE INTO zipcodes
     VALUES(?, ?, ?, ?, ?, ?)
 '''
 
 insert_yelp = '''
-    INSERT INTO yelp
-    VALUES(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT OR IGNORE INTO yelp
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
 '''
 
 # General Functions for Dict Caching:
@@ -294,6 +293,9 @@ class Yelp:
     name: string
         the name of the business
 
+    zipcode: int
+        zipcode of business
+
     bus_type: string
         the title or alias denoting the type of business
 
@@ -315,11 +317,12 @@ class Yelp:
     link: string
         a string with the link to the business website
     '''
-    def __init__(self, name, bus_type, phone, address, reviews, rating, price, link):
+    def __init__(self, name, zipcode, bus_type, phone, address, reviews, rating, price, link):
         '''
         Initalize instance of Yelp business according to class spec
         '''
         self.name = name
+        self.zipcode = zipcode
         self.bus_type = bus_type
         self.phone = phone
         self.address = address
@@ -335,7 +338,7 @@ class Yelp:
         # From https://stackoverflow.com/questions/45965007/multiline-f-string-in-python
         # python strings will concatenate in return statements when not comma-separated.
         return (
-            f"{self.name} ({self.bus_type}) is located in {self.city}, {self.state}. \n"
+            f"{self.name} ({self.bus_type}) is located at {self.address}. \n"
             f"It has a price rating of: {self.price}. There are {self.reviews} reviews and a rating of {self.rating}. \n"
             f"More information can be found at {self.link}"
         )
@@ -439,18 +442,67 @@ def format_nearby_places(json_results):
 
     # Iterate through list of dictionaries containing nearby places & get fields
     for i in range(len(list_dict_nearby)):
-        name = list_dict_nearby[i]['name']
-        bus_type = list_dict_nearby[i]['categories'][0]['title']
-        phone = list_dict_nearby[i]['phone']
-        address = list_dict_nearby[i]['address1']
-        reviews = list_dict_nearby[i]['review_count']
-        rating = list_dict_nearby[i]['rating']
-        price = list_dict_nearby[i]['price']
-        link = list_dict_nearby[i]['url']
+
+        if 'name' in list_dict_nearby[i].keys():
+            name = list_dict_nearby[i]['name']
+        else:
+            name = ''
+
+        if 'location' in list_dict_nearby[i].keys():
+            if 'zip_code' in list_dict_nearby[i].keys():
+                zipcode = list_dict_nearby[i]['location']['zip_code']
+            else:
+                zipcode = ''
+            if 'address1' in list_dict_nearby[i].keys(): 
+                address = list_dict_nearby[i]['location']['address1']
+            else:
+                address = ''
+        else:
+            zipcode = ''
+            address = ''
+
+
+        if 'categories' in list_dict_nearby[i].keys():
+            if len(list_dict_nearby[i]['categories']) > 0:
+                if 'title' in list_dict_nearby[i].keys():
+                    bus_type = list_dict_nearby[i]['categories'][0]['title']
+                else:
+                    bus_type = ''
+            else:
+                bus_type = ''
+        else:
+            bus_type = ''
+
+        if 'phone' in list_dict_nearby[i].keys():
+            phone = list_dict_nearby[i]['phone']
+        else:
+            phone = ''
+
+        if 'review_count' in list_dict_nearby[i].keys():
+            reviews = list_dict_nearby[i]['review_count']
+        else:
+            reviews = ''
+
+        if 'rating' in list_dict_nearby[i].keys():
+            rating = list_dict_nearby[i]['rating']
+        else:
+            rating = ''
+
+        if 'price' in list_dict_nearby[i].keys():
+            price = list_dict_nearby[i]['price']
+        else:
+            price = ''
+
+        if 'url' in list_dict_nearby[i].keys():
+            link = list_dict_nearby[i]['url']
+        else:
+            link = ''
 
         # Replace blank fields with str statements
         if name == '':
             name = 'No Name'
+        if zipcode == '':
+            zipcode = 'No Zip'
         if bus_type == '':
              bus_type = 'No Type'
         if phone == '':
@@ -467,52 +519,91 @@ def format_nearby_places(json_results):
             link = 'No Link'
 
         # Print each place in a nice format
-        print(f"- {name} ({bus_type}): \nrating: {rating} \nnumber of reviews: {reviews} \nprice: {price} \nlink: {link}")
+        # print(f"- {name} ({bus_type}): \nrating: {rating} \nnumber of reviews: {reviews} \nprice: {price} \nlink: {link}")
+
+        return Yelp(name, zipcode, bus_type, phone, address, reviews, rating, price, link)
+
+
+
+## Flask App Functionalities
+
+def get_zip_results(zipcode):
+    conn = sqlite3.connect('Si507Proj.sqlite')
+    cur = conn.cursor()
+    
+    resp = zip_make_request_with_cache(zip_base, zipcode)
+    obj = get_zip_instance(resp)
+    conn.execute(insert_zip, [obj.zipcode, obj.latitude, obj.longitude, obj.city, obj.state, obj.timezone])
+
+    q = f'''
+        SELECT City, State, Timezone, Latitude, Longitude
+        FROM zipcodes
+        WHERE Zipcode == {zipcode}
+    '''
+    results = cur.execute(q).fetchall()
+    conn.close()
+    return results
+
+
+@app.route('/')
+def index():
+    # set up connection with database and establish cursor
+    conn = sqlite3.connect('Si507Proj.sqlite')
+    cur = conn.cursor()
+
+    conn.execute(create_zip)
+    conn.execute(create_yelp)
+    conn.commit()
+    conn.close()
+    return render_template('index.html')
+
+@app.route('/results', methods=['POST'])
+def results():
+    zipcode = request.form['zipc']
+    results = get_zip_results(zipcode)
+    return render_template('zipresults.html', results=results)
+
+
 
 if __name__ == "__main__":
-    conn.execute(create_yelp)
-    conn.execute(create_zip)
-    conn.commit()
-    # Zip API example for access
-
-    # resp = zip_make_request_with_cache(zip_base, '48109')
-    # print(resp)
-
-    # Yelp API example for access
-
-    # resp = requests.get(yelp_base,params={'latitude':37.786882,
-    #                                         'longitude':-122.399972, 'term': 'tea', 'limit': 5}, headers={'Authorization': 'Bearer {}'.format(yelp_key)})
-    # print(resp.json())
+    # conn.execute(create_zip)
+    # conn.execute(create_yelp)
 
 
-    # conn.execute(insert_zip, ['48109', 'Ann Arbor', 'MI', '3838.3', '38383.3', 'EST'])
-    # conn.execute(insert_yelp, ['ben & jerrys', 'ice cream', '$$', '734-xxx-xxxx', '48109', 'open', 'state st', 'ann arbor', 'MI'])
+    # respo = zip_make_request_with_cache(zip_base, 48109)
+    # obje = get_zip_instance(respo)
+    # conn.execute(insert_zip, [obje.zipcode, obje.latitude, obje.longitude, obje.city, obje.state, obje.timezone])
+
+    # resp = yelp_make_request_with_cache(yelp_base, 48080, 'coffee')
+
+    # obj = format_nearby_places(resp)
+    # conn.execute(insert_yelp, [obj.name, obj.zipcode, obj.bus_type, obj.phone, obj.address, obj.reviews, obj.rating, obj.price, obj.link])
+
+
+#     CACHE_DICT = open_cache()
+#     indicator = True
+
+#     # Have user enter zip code and validate that its numeric and has length 5
+#     zip_input = input(f"Please enter a five-digit zip code: ")
+
+#     while True:
+#         if zip_input == 'exit':
+#             print('See you later!')
+#             break
+
+#         elif zip_input.isnumeric() and len(zip_input) == 5:
+#             if indicator:
+#                 zip_info = zip_make_request_with_cache(zip_base, zip_input)
+#                 zip_instance = get_zip_instance(zip_info)
+#                 print('################################################################')
+#                 print(f"{zip_instance.info()}")
+#                 print('################################################################')
+#                 indicator = False
+#                 break
+
+    app.run(debug=True)
+
+
+
     # conn.commit()
-
-
-
-
-# Actual Main Calls:::::::::::::::::::>
-
-    CACHE_DICT = open_cache()
-    indicator = True
-
-    # Have user enter zip code and validate that its numeric and has length 5
-    zip_input = input(f"Please enter a five-digit zip code: ")
-
-    while True:
-        if zip_input == 'exit':
-            print('See you later!')
-            break
-
-        elif zip_input.isnumeric() and len(zip_input) == 5:
-            if indicator:
-                zip_info = zip_make_request_with_cache(zip_base, zip_input)
-                zip_instance = get_zip_instance(zip_info)
-                print('################################################################')
-                print(f"{zip_instance.info()}")
-                print('################################################################')
-                indicator = False
-                break
-
-
+    # conn.close()

@@ -1,0 +1,29 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF8"/>
+    <title>Zipcode Results</title>
+</head>
+<body>
+    <h1>Here is information about the Zipcode you entered!</h1>
+    <table>
+        <tr>
+            <th>City</th>
+            <th>State</th>
+            <th>Timezone</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+        </tr>
+        {% for row in results %}
+        <tr>
+            <td>{{row[0]}}</td>
+            <td>{{row[1]}}</td>
+            <td>{{row[2]}}</td>
+            <td>{{row[3]}}</td>
+            <td>{{row[4]}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
