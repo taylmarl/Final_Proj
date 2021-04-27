@@ -43,7 +43,7 @@ create_yelp = '''
     CREATE TABLE IF NOT EXISTS "yelp" (
         "Name"      TEXT NOT NULL,
         "Zipcode"   TEXT NOT NULL,
-        "Business Type"     TEXT NOT NULL,
+        "Business_Type"     TEXT NOT NULL,
         "Phone"     TEXT NOT NULL,
         "Address" TEXT NOT NULL,
         "Reviews"  TEXT NOT NULL,
@@ -536,7 +536,7 @@ def get_zip_results(zipcode):
     conn.execute(insert_zip, [obj.zipcode, obj.latitude, obj.longitude, obj.city, obj.state, obj.timezone])
 
     q = f'''
-        SELECT City, State, Timezone, Latitude, Longitude
+        SELECT Zipcode, City, State, Timezone, Latitude, Longitude
         FROM zipcodes
         WHERE Zipcode == {zipcode}
     '''
@@ -544,12 +544,28 @@ def get_zip_results(zipcode):
     conn.close()
     return results
 
+def get_yelp_results(zipcode):
+    conn = sqlite3.connect('Si507Proj.sqlite')
+    cur = conn.cursor()
+
+    resp = yelp_make_request_with_cache(yelp_base, zipcode)
+    obj = format_nearby_places(resp)
+    cur.execute(insert_yelp, [obj.name, obj.zipcode, obj.bus_type, obj.phone, obj.address, obj.reviews, obj.rating, obj.price, obj.link])
+
+    q = f'''
+        SELECT Name, Business_Type, Phone, Address, Reviews, Rating, Price, Link
+        FROM yelp
+        WHERE Zipcode == {zipcode}
+    '''
+    results = cur.execute(q).fetchall()
+    conn.close()
+    return results
 
 @app.route('/')
 def index():
     # set up connection with database and establish cursor
     conn = sqlite3.connect('Si507Proj.sqlite')
-    cur = conn.cursor()
+    # cur = conn.cursor()
 
     conn.execute(create_zip)
     conn.execute(create_yelp)
@@ -557,15 +573,22 @@ def index():
     conn.close()
     return render_template('index.html')
 
-@app.route('/results', methods=['POST'])
-def results():
+@app.route('/zipresults', methods=['POST'])
+def zipresults():
     zipcode = request.form['zipc']
     results = get_zip_results(zipcode)
     return render_template('zipresults.html', results=results)
 
+@app.route('/yelpresults', methods=['POST'])
+def yelpresults():
+    zipcode = request.form['zipc']
+    results = get_yelp_results(zipcode)
+    return render_template('yelpresults.html', results=results)
+
 
 
 if __name__ == "__main__":
+    # conn = sqlite3.connect('Si507Proj.sqlite')
     # conn.execute(create_zip)
     # conn.execute(create_yelp)
 
@@ -574,7 +597,7 @@ if __name__ == "__main__":
     # obje = get_zip_instance(respo)
     # conn.execute(insert_zip, [obje.zipcode, obje.latitude, obje.longitude, obje.city, obje.state, obje.timezone])
 
-    # resp = yelp_make_request_with_cache(yelp_base, 48080, 'coffee')
+    # resp = yelp_make_request_with_cache(yelp_base, 48080)
 
     # obj = format_nearby_places(resp)
     # conn.execute(insert_yelp, [obj.name, obj.zipcode, obj.bus_type, obj.phone, obj.address, obj.reviews, obj.rating, obj.price, obj.link])

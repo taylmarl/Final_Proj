@@ -1,0 +1,36 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF8"/>
+    <title>Yelp Results</title>
+</head>
+<body>
+    <h1>Here is information about local businesses on Yelp, given the zip code you provided!</h1>
+    <table>
+        <tr>
+            <th>Business Name</th>
+            <th>Business Type</th>
+            <th>Phone Number</th>
+            <th>Address</th>
+            <th>Number of Reviews</th>
+            <th>Business Rating</th>
+            <th>Price</th>
+            <th>Website Link</th>
+        </tr>
+        {% for row in results %}
+        <tr>
+            <td>{{row[0]}}</td>
+            <td>{{row[1]}}</td>
+            <td>{{row[2]}}</td>
+            <td>{{row[3]}}</td>
+            <td>{{row[4]}}</td>
+            <td>{{row[5]}}</td>
+            <td>{{row[6]}}</td>
+            <td>{{row[7]}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    
+</body>
+</html>
