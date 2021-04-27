@@ -254,6 +254,36 @@ def zip_make_request_with_cache(search_url, zipcode):
         save_cache(CACHE_DICT)
         return CACHE_DICT[query_url]
 
+def get_zip_instance(json_results):
+    '''Parse Zipcode API results and print location information.
+    
+    Parameters
+    ----------
+    json_results: dict
+        dictionary containing response from Zipcode API
+    '''
+    zipcode = json_results['zip_code']
+    latitude = json_results['lat']
+    longitude = json_results['lng']
+    city = json_results['city']
+    state = json_results['state']
+    timezone = json_results['timezone']['timezone_abbr']
+
+    if zipcode == '':
+        zipcode = 'No Zipcode'
+    if latitude == '':
+        latitude = 'No Latitude'
+    if longitude == '':
+        longitude = 'No Longitude'
+    if city == '':
+        city = 'No City'
+    if state == '':
+        state = 'No State'
+    if timezone == '':
+        timezone = 'No Timezone'
+
+    return Zipcode(zipcode, latitude, longitude, city, state, timezone)
+
 # Yelp Fusion Class
 
 class Yelp:
@@ -276,13 +306,16 @@ class Yelp:
     reviews: list
         abbreviaton for the timezone of a given zipcode
 
+    rating: int
+        average rating for a given business, from Yelp
+
     price: string
         string showing price of business using $ symbols
 
     link: string
         a string with the link to the business website
     '''
-    def __init__(self, name, bus_type, phone, address, reviews, price, link):
+    def __init__(self, name, bus_type, phone, address, reviews, rating, price, link):
         '''
         Initalize instance of Yelp business according to class spec
         '''
@@ -290,6 +323,8 @@ class Yelp:
         self.bus_type = bus_type
         self.phone = phone
         self.address = address
+        self.reviews = reviews
+        self.rating = rating
         self.price = price
         self.link = link
 
@@ -301,7 +336,7 @@ class Yelp:
         # python strings will concatenate in return statements when not comma-separated.
         return (
             f"{self.name} ({self.bus_type}) is located in {self.city}, {self.state}. \n"
-            f"It has a price rating of: {self.price}. \n"
+            f"It has a price rating of: {self.price}. There are {self.reviews} reviews and a rating of {self.rating}. \n"
             f"More information can be found at {self.link}"
         )
 
@@ -388,6 +423,52 @@ def yelp_make_request_with_cache(baseurl, zipcode, term=None):
         save_cache(CACHE_DICT)
         return CACHE_DICT[query_url]
 
+def format_nearby_places(json_results):
+    '''Parse Yelp API results and print nearby businesses.
+    
+    Parameters
+    ----------
+    json_results: dict
+        dictionary containing response from Yelp API
+    '''
+    # verify that this key is valid
+    if 'businesses' in json_results.keys():
+        list_dict_nearby = json_results['businesses']
+    else:
+        return "No valid results."
+
+    # Iterate through list of dictionaries containing nearby places & get fields
+    for i in range(len(list_dict_nearby)):
+        name = list_dict_nearby[i]['name']
+        bus_type = list_dict_nearby[i]['categories'][0]['title']
+        phone = list_dict_nearby[i]['phone']
+        address = list_dict_nearby[i]['address1']
+        reviews = list_dict_nearby[i]['review_count']
+        rating = list_dict_nearby[i]['rating']
+        price = list_dict_nearby[i]['price']
+        link = list_dict_nearby[i]['url']
+
+        # Replace blank fields with str statements
+        if name == '':
+            name = 'No Name'
+        if bus_type == '':
+             bus_type = 'No Type'
+        if phone == '':
+            phone = 'No Phone'
+        if address == '':
+            address = 'No Address'
+        if reviews == '':
+            reviews = 'No Reviews'
+        if rating == '':
+            rating = 'No Rating'
+        if price == '':
+            price = 'No Price'
+        if link == '':
+            link = 'No Link'
+
+        # Print each place in a nice format
+        print(f"- {name} ({bus_type}): \nrating: {rating} \nnumber of reviews: {reviews} \nprice: {price} \nlink: {link}")
+
 if __name__ == "__main__":
     conn.execute(create_yelp)
     conn.execute(create_zip)
@@ -412,5 +493,26 @@ if __name__ == "__main__":
 
 
 # Actual Main Calls:::::::::::::::::::>
+
+    CACHE_DICT = open_cache()
+    indicator = True
+
+    # Have user enter zip code and validate that its numeric and has length 5
+    zip_input = input(f"Please enter a five-digit zip code: ")
+
+    while True:
+        if zip_input == 'exit':
+            print('See you later!')
+            break
+
+        elif zip_input.isnumeric() and len(zip_input) == 5:
+            if indicator:
+                zip_info = zip_make_request_with_cache(zip_base, zip_input)
+                zip_instance = get_zip_instance(zip_info)
+                print('################################################################')
+                print(f"{zip_instance.info()}")
+                print('################################################################')
+                indicator = False
+                break
 
 
