@@ -530,7 +530,7 @@ def yelp_database_insert(json_results):
 def get_zip_results(zipcode):
     conn = sqlite3.connect('Si507Proj.sqlite')
     cur = conn.cursor()
-    
+
     resp = zip_make_request_with_cache(zip_base, zipcode)
     obj = get_zip_instance(resp)
     if obj is None:
@@ -586,6 +586,8 @@ def zipresults():
 def yelpresults():
     zipcode = request.form['zipc']
     results = get_yelp_results(zipcode)
+    if len(results) < 2:
+        return render_template('errorpage2.html', results=results)
     return render_template('yelpresults.html', results=results)
 
 

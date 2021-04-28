@@ -6,7 +6,33 @@
     <title>Zipcode Results</title>
 </head>
 <body>
-    <h1>Here is information about the Zipcode you entered!</h1>
+    <h1>Here is information about the Zipcode you entered!</h1><br/><br/><br/>
+    <style>
+        table, th, td {
+            border: 4px ridge rgb(0, 0, 0);
+            width: 100%;
+            font-family: Georgia, 'Times New Roman', Times, serif;
+            border-collapse: collapse;
+            padding: 30px;
+            text-align: center;
+            max-width: 300px;
+            margin: auto;
+        }
+
+        th {
+            background-color: rgb(32, 141, 105);
+            color: white;
+        }
+        td {
+            background-color: aquamarine;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        form {
+            text-align: center;
+        }
+    </style>
     <table>
         <tr>
             <th>Zipcode</th>
@@ -28,7 +54,7 @@
         {% endfor %}
     </table>
     <br/><br/><br/>
-    <h2>If you would like to search for a new zipcode, use the arrows in the browser to navigate back to the first page. <br/>
+    <h2>If you would like to search for a new zipcode, use the arrows in the browser to navigate back to the first page. <br/><br/>
         Otherwise, type a zipcode below to start a yelp search in any location!</h2>
         <form action='/yelpresults' method='POST'>
             <input type='text' name='zipc'/>
