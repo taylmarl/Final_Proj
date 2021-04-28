@@ -621,7 +621,7 @@ def yelpresults():
     results = get_yelp_results(zipcode, sort_feat, sort_dir)
     if len(results) < 2:
         return render_template('errorpage2.html', results=results)
-    return render_template('yelpresults.html', results=results, sort=sort_feat, dir=sort_dir)
+    return render_template('yelpresults.html', results=results, sort=sort_feat, dir=sort_dir, zip=zipcode)
 
 
 if __name__ == "__main__":
