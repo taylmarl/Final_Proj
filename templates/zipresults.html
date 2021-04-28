@@ -30,7 +30,12 @@
             text-align: center;
         }
         form {
-            text-align: center;
+            text-align: left;
+            font-size: large;
+            font-family:Georgia, 'Times New Roman', Times, serif;
+        }
+        div {
+            text-align: left;
         }
     </style>
     <table>
@@ -57,7 +62,18 @@
     <h2>If you would like to search for a new zipcode, use the arrows in the browser to navigate back to the first page. <br/><br/>
         Otherwise, type a zipcode below to start a yelp search in any location!</h2>
         <form action='/yelpresults' method='POST'>
-            <input type='text' name='zipc'/>
+            Enter a zipcode: <input type='text' name='zipc'/><br/><br/>
+                Select feature to focus search on: <br/>
+               
+                
+                <input type='radio' name='feat' 
+                            value='rating' checked='checked'/> Ratings <br/>
+                    <input type='radio' name='feat' 
+                            value='reviews'/> Number of Reviews <br/>
+                    <input type='radio' name='feat'
+                            value='price'/> Prices <br/>
+
+                
             <input type='submit' value='Start Yelp search, of course!'/>
         </form>
 </body>

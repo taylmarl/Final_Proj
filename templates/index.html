@@ -6,12 +6,40 @@
 </head>
 <body>
     <h1>Welcome! Please use this interface to search for location information and businesses nearby on Yelp!</h1>
+    
+    <img src="https://www.legalgamblingandthelaw.com/wp-content/uploads/2018/07/united-states-of-america-50-states.jpg">
+    
     <form action='/zipresults' method='POST'>
     <p>
         Please enter a valid zipcode: <input name="zipc" type="text"/><br/>
     </p>
     <input type='submit' value='Search Zipcode'/>
     </form>
+
+    <br/><br/><br/>
+    <p>
+        Unsure what a valid zipcode is? Here are some example zipcodes you can try! (from phaster.com):
+        <ul>
+            <li>85001</li>
+            <li>48105</li>
+            <li>57404</li>
+            <li>90210 (recognize this one?)</li>
+            <li>70117</li>
+        </ul>
+        <br/><br/>
+        Zipcodes are always changing and the list is being updated constantly (smartystreets.com). If you are unsure of valid zipcodes, do not worry!
+        There are over 41,000 zipcodes in the United States. Try an example code above, or test your luck with guessing a 5-digit number!
+
+        <br/><br/>
+        Sources: 
+        <ul>
+            <li>http://phaster.com/zip_code.html</li>
+            <li>https://smartystreets.com/docs/zip-codes-101</li>
+
+        </ul>
+
+
+    </p>
 </body>
 </html>
 <style>
@@ -19,6 +47,18 @@
         text-align: left;
         font-family: Georgia, 'Times New Roman', Times, serif;
         color: rgb(32, 141, 105)
+    }
+    img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+}
+    p {
+        font-size:large;
+        font-family: Georgia, 'Times New Roman', Times, serif;
+        color: black;
     }
     form {
             text-align: center;
