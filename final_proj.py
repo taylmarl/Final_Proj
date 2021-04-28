@@ -30,28 +30,31 @@ yelp_base = 'https://api.yelp.com/v3/businesses/search'
 
 create_zip = '''
     CREATE TABLE IF NOT EXISTS "zipcodes" (
-        "Zipcode"   TEXT NOT NULL PRIMARY KEY UNIQUE,
-        "Latitude"  TEXT NOT NULL,
-        "Longitude" TEXT NOT NULL,
-        "City"      TEXT NOT NULL,
-        "State"     TEXT NOT NULL,
-        "Timezone"  TEXT NOT NULL
+        "Zipcode"	TEXT NOT NULL,
+	    "Latitude"	TEXT NOT NULL,
+	    "Longitude"	TEXT NOT NULL,
+	    "City"	TEXT NOT NULL,
+	    "State"	TEXT NOT NULL,
+	    "Timezone"	TEXT NOT NULL,
+	PRIMARY KEY("Zipcode","Latitude","Longitude")
     );
 '''
 
 create_yelp = '''
     CREATE TABLE IF NOT EXISTS "yelp" (
-        "Name"      TEXT NOT NULL,
-        "Zipcode"   TEXT NOT NULL,
-        "Business_Type"     TEXT NOT NULL,
-        "Phone"     TEXT NOT NULL,
-        "Address" TEXT NOT NULL,
-        "Reviews"  TEXT NOT NULL,
-        "Rating"   TEXT NOT NULL,
-        "Price"     TEXT NOT NULL,
-        "Link"      TEXT NOT NULL PRIMARY KEY UNIQUE,
+	    "Name"	TEXT NOT NULL,
+	    "Zipcode"	TEXT NOT NULL,
+	    "Business_Type"	TEXT NOT NULL,
+	    "Phone"	TEXT NOT NULL,
+	    "Address"	TEXT NOT NULL,
+	    "Reviews"	NUMERIC NOT NULL,
+	    "Rating"	NUMERIC NOT NULL,
+	    "Price"	TEXT NOT NULL,
+	    "Link"	TEXT NOT NULL UNIQUE,
+	
+    PRIMARY KEY("Link"),
+	FOREIGN KEY("Zipcode") REFERENCES "zipcodes"("Zipcode")
 
-        FOREIGN KEY(Zipcode) REFERENCES zipcodes(Zipcode)
     );
 '''
 
@@ -324,11 +327,11 @@ class Yelp:
     address: string
         the street address of a given business
 
-    reviews: list
-        abbreviaton for the timezone of a given zipcode
+    reviews: str
+        number of reviews that a business has received. will be converted to int
 
-    rating: int
-        average rating for a given business, from Yelp
+    rating: str
+        average rating for a given business, from Yelp. will be converted to float
 
     price: string
         string showing price of business using $ symbols
@@ -345,8 +348,8 @@ class Yelp:
         self.bus_type = bus_type
         self.phone = phone
         self.address = address
-        self.reviews = reviews
-        self.rating = rating
+        self.reviews = int(reviews)
+        self.rating = float(rating)
         self.price = price
         self.link = link
 
@@ -365,12 +368,12 @@ class Yelp:
 # Yelp Fusion API Functions
 
 def yelp_make_request(baseurl, params):
-    '''Make a request to the Web API using the baseurl and params
+    '''Make a request to the Yelp API using the baseurl and params
     
     Parameters
     ----------
     baseurl: string
-        The URL for the API endpoint
+        The URL for the Yelp API endpoint
     params: dictionary
         A dictionary of param:value pairs
     
@@ -387,7 +390,7 @@ def yelp_make_request(baseurl, params):
             params[key] = values.lower()
 
 
-    # Make request using params & oauth
+    # Make request using params & headers necessary for Yelp API
     response = requests.get(url=baseurl,
                             params=params,
                             headers={'Authorization': 'Bearer {}'.format(yelp_key)})
@@ -446,14 +449,14 @@ def yelp_make_request_with_cache(baseurl, zipcode, term=None):
         return CACHE_DICT[query_url]
 
 def yelp_database_insert(json_results):
-    '''Parse Yelp API results and print nearby businesses.
+    '''Parse Yelp API results and populate database with the information.
     
     Parameters
     ----------
     json_results: dict
         dictionary containing response from Yelp API
     '''
-    # verify that this key is valid
+    # connect to database for insertion
     conn = sqlite3.connect('Si507Proj.sqlite')
     cur = conn.cursor()
 
@@ -503,12 +506,12 @@ def yelp_database_insert(json_results):
         if 'review_count' in list_dict_nearby[i].keys():
             reviews = list_dict_nearby[i]['review_count']
         else:
-            reviews = 'No Reviews'
+            reviews = '0'
 
         if 'rating' in list_dict_nearby[i].keys():
             rating = list_dict_nearby[i]['rating']
         else:
-            rating = 'No Rating'
+            rating = '0.0'
 
         if 'price' in list_dict_nearby[i].keys():
             price = list_dict_nearby[i]['price']
@@ -528,6 +531,13 @@ def yelp_database_insert(json_results):
 # Flask App Functionalities
 
 def get_zip_results(zipcode):
+    '''Make Zipcode API Request, populate database, and then run appropriate SQL Query.
+    
+    Parameters
+    ----------
+    zipcode: str
+        user input zipcode value
+    '''
     conn = sqlite3.connect('Si507Proj.sqlite')
     cur = conn.cursor()
 
@@ -547,16 +557,37 @@ def get_zip_results(zipcode):
     conn.close()
     return results
 
-def get_yelp_results(zipcode):
+def get_yelp_results(zipcode, sort_feat, sort_dir):
+    '''Make Yelp API Request, populate database, and then run appropriate SQL Query.
+    
+    Parameters
+    ----------
+    zipcode: str
+        user input zipcode value
+
+    sort_feat: str
+        user selected feature to focus sorted SQL query results on. 
+        ie. what are we sorting by in the SQL results?
+
+    sort_dir: str
+        user selected direction of sort for SQL query results. ASC or DESC?
+    '''
     conn = sqlite3.connect('Si507Proj.sqlite')
     cur = conn.cursor()
 
     response = yelp_make_request_with_cache(yelp_base, zipcode)
     yelp_database_insert(response)
+
+    if sort_dir == "High to Low":
+        sort_dir = "DESC"
+    else:
+        sort_dir = "ASC"
     q = f'''
         SELECT Name, Business_Type, Phone, Address, Reviews, Rating, Price, Link
         FROM yelp
-        WHERE Zipcode == {zipcode}'''
+        WHERE Zipcode == {zipcode}
+        ORDER BY {sort_feat} {sort_dir}
+        '''
 
     results = cur.execute(q).fetchall()
     conn.close()
@@ -585,11 +616,12 @@ def zipresults():
 @app.route('/yelpresults', methods=['POST'])
 def yelpresults():
     zipcode = request.form['zipc']
-    results = get_yelp_results(zipcode)
+    sort_feat = request.form['feat']
+    sort_dir = request.form['sort_dir']
+    results = get_yelp_results(zipcode, sort_feat, sort_dir)
     if len(results) < 2:
         return render_template('errorpage2.html', results=results)
-    return render_template('yelpresults.html', results=results)
-
+    return render_template('yelpresults.html', results=results, sort=sort_feat, dir=sort_dir)
 
 
 if __name__ == "__main__":

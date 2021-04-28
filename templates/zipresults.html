@@ -33,6 +33,7 @@
             text-align: left;
             font-size: large;
             font-family:Georgia, 'Times New Roman', Times, serif;
+            padding-left:500px;
         }
         div {
             text-align: left;
@@ -67,11 +68,18 @@
                
                 
                 <input type='radio' name='feat' 
-                            value='rating' checked='checked'/> Ratings <br/>
+                            value='Rating' checked='checked'/> Ratings <br/>
                     <input type='radio' name='feat' 
-                            value='reviews'/> Number of Reviews <br/>
+                            value='Reviews'/> Number of Reviews <br/>
                     <input type='radio' name='feat'
-                            value='price'/> Prices <br/>
+                            value='Price'/> Prices <br/>
+
+                    <br/><br/>
+                    Select how this feature should be sorted: <br/>
+                    <input type='radio' name='sort_dir' 
+                            value='High to Low'/> Highest to Lowest <br/>
+                    <input type='radio' name='sort_dir'
+                            value='Low to High'/> Lowest to Highest <br/>
 
                 
             <input type='submit' value='Start Yelp search, of course!'/>
