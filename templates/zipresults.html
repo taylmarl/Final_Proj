@@ -28,11 +28,11 @@
         {% endfor %}
     </table>
     <br/><br/><br/>
-    <h2>If you would like to search for a new zip code, use the arrows in the browser to navigate back to the first page. <br/>
-        Otherwise, click the button below to start a yelp search for the currently specified location, seen above!</h2>
+    <h2>If you would like to search for a new zipcode, use the arrows in the browser to navigate back to the first page. <br/>
+        Otherwise, type a zipcode below to start a yelp search in any location!</h2>
         <form action='/yelpresults' method='POST'>
+            <input type='text' name='zipc'/>
             <input type='submit' value='Start Yelp search, of course!'/>
-            <input type="hidden" name="zipc" value={{results[0][0]}}/>
         </form>
 </body>
 </html>
